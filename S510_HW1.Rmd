@@ -1,0 +1,187 @@
+---
+title: "STAT 510 -- HW 1"
+author: "Erick Castillo"
+date: "9/4/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Problem 1
+
+\textbf{A.} I did not include the code where I install necessary packages for aesthetic purposes.
+```{r, include = FALSE}
+library(alr4)
+library(datasets)
+htwt <- Htwt # rename for convenience
+```
+
+```{r}
+mod1 <- lm(wt~ht, data = htwt)
+summary(mod1)
+```
+
+\begin{itemize}
+\item Yes, there appears to be a relationship between the predictor and the response.
+\item The relationship between the variables is weak. This is given by the low $R^2$ and the high p-value associated with the variable ht.
+\item There is a positive relationship present between the variables.
+\item The following code calculates the predicted weight and the confidence/prediction intervals:
+\end{itemize}
+
+```{r}
+newdata = data.frame(ht = 165)
+
+# output for prediction intervals.
+predict(mod1, newdata, interval="predict")
+
+# output for confidence intervals.
+predict(mod1, newdata, interval="confidence") 
+```
+
+Note that the "fit" values are the predicted weight of a person with a height of 165 cm. The prediction and confidence intervals are $(38.71,\ 79.62)$ and $(52.98,\ 65.35)$ respectively.
+
+\textbf{B.} The following is the plot of the above data.
+```{r, out.width='50%',out.height='50%',fig.align='center'}
+plot(htwt$ht, htwt$wt)
+abline(mod1)
+```
+
+## Problem 2
+\textbf{A.} Draw scatterplot of Girth and Height.
+```{r, out.width='50%',out.height='50%',fig.align='center'}
+plot(trees$Height, trees$Girth)
+```
+
+A simple linear regression seems appropriate in this case. Without using R to build a model, I would suggest a log() transformation on Girth because the $Y_i$ data is very spread.
+
+\textbf{B.} Compute $\bar{x},\bar{y},S_{xx},S_{yy},$ and $S_{xy}$, along with $\hat{\beta}_1$ and $\hat{\beta}_0$. Finally draw the fitted line on the scatter plot.
+```{r}
+x <- trees$Height
+y <- trees$Girth
+
+# calculating desired values.
+xbar <- mean(x)
+ybar <- mean(y)
+sxx <- sum((x-xbar)^2)
+syy <- sum((y-ybar)^2)
+sxy <- sum((x-xbar)*(y-ybar))
+
+# calculating parameter estimates.
+b1 <- sxy/sxx
+b0 <- ybar - b1*xbar
+
+c(xbar,ybar,sxx,syy,sxy,b1,b0)
+```
+
+The values displayed in the above vector are $\bar{x},\bar{y},S_{xx},S_{yy},S_{xy},\hat{\beta}_1,$ and $\hat{\beta}_0$ respectively.
+
+Below is the plot with the regression line:
+```{r, out.width='50%',out.height='50%',fig.align='center'}
+plot(x,y)
+abline(a = b0, b = b1)
+```
+
+
+\textbf{C.} Next obtain the estimate of $\sigma^2$ and find the estimated standard errors of $\hat{\beta}_0$ and $\hat{\beta}_1$. Then compute the t-tests for the hypotheses $\hat{\beta}_0=0$ and $\hat{\beta}_1=0$, find the associated p-values for a two-tailed test.
+```{r}
+n <- length(x)
+yhat <- b0 + b1*x # this is a vector of ALL predicted values
+mse <- sum((y-yhat)^2)/(n-2)
+
+se.b1 <- sqrt(mse/sxx)
+se.b0 <- sqrt(mse*(((1/n)+(xbar^2/sxx))))
+
+c(mse, se.b0, se.b1)
+```
+
+The values in the above vector show the values for $\hat{\sigma}^2,se(\hat{\beta}_0),$ and $se(\hat{\beta}_1)$ respectively.
+
+Next I test the hypotheses and find the associated p-values for a two-tailed test.
+```{r}
+t.b1 <- (b1-0)/sqrt(mse/sxx)
+t.b0 <- (b0-0)/sqrt(mse*((1/n)+(xbar^2/sxx)))
+
+p.b1 <- 2*(1-pt(t.b1,n-2))
+p.b0 <-2*(pt(t.b0, n-2))
+
+c(t.b1,p.b1,t.b0,p.b0)
+```
+
+The above vector output displays the test statistic for $\hat{\beta}_1$, its corresponding p-value, the test statistic for $\hat{\beta}_0$, and $\hat{\beta}_0$'s corresponding p-value respectively.
+
+Using these p-values we would conclude that there is good evidence to reject $H_0: \hat{\beta_1}=0$ and we fail to reject $H_0: \hat{\beta_0} = 0$ at $\alpha = 0.05$.
+
+\textbf{D.} Construct a $95\%$ confidence interval for $\hat{\beta}_1$.
+```{r}
+b1-c(-1,1)*qt(0.025,n-2)*se.b1
+```
+
+The above output is the $95\%$ confidence interval for $\hat{\beta}_1$.
+
+\textbf{E.} Compute the variability in Girth explained by Height. Explain what this means.
+```{r}
+cor(x,y)^2
+```
+
+This represents the Multiple $R^2$ output from the lm() function. This value can be thought of as what percentage of the variation in the response variable Girth is explained by the regression model. So in this case, $\approx 27\%$ of the variability in Girth is explained by the variability in the predictor Height.
+
+\textbf{F.} Compute a $95\%$ prediction interval for the Girth of a tree which has a height of $94ft$.
+```{r}
+ynew <- b0 + b1*94
+
+# value of interest.
+ynew
+# prediction interval.
+ynew + c(1,-1)*qt(0.05/2,n-2)*sqrt(mse*(1+(1/n)+(94-xbar)^2/sxx))
+```
+
+The above output displays that the $95\%$ prediction interval for the girth of a tree that has a height of $x_0=94$ is (11.5, 24.21).
+
+## Problem 3
+\textbf{A.} Use the code provided in the assignment.
+```{r}
+set.seed(1)
+n <- 100
+x = runif(n)
+```
+
+\textbf{B.} Use the rnorm function to generate a vector that contains 100 observations from a $N(0,0.25)$ distribution.
+```{r}
+eps <- rnorm(n,0,sqrt(0.25))
+```
+
+\textbf{C.} Use the above vectors to create a vector y according to the model $$Y = -1+0.5x+\epsilon$$. What are the values of $\beta_0$ and $\beta_1$ in this linear model?
+```{r}
+y <- -1+0.5*x+eps
+length(y)
+```
+
+The length of the above vector is 100. $\beta_0=-1$ and $\beta_1=0.5$.
+
+\textbf{D.} Create a scatter plot displaying the relationship between x and y.
+```{r, out.width='50%',out.height='50%',fig.align='center'}
+plot(x,y)
+```
+
+It appears that there is a somewhat positive relationship between x and y. This relationship is mostly obscured because of the spread of the points.
+
+\textbf{E.} Fit a LS model to compare $\beta_0$ and $\beta_1$ to $\hat{\beta}_0$ and $\hat{\beta}_1$.
+```{r}
+mod2 <- lm(y~x)
+summary(mod2)
+```
+
+Note that $\beta_1 = 0.5$ while $\hat{\beta}_1 \approx 0.656$ and $\beta_0 = -1$ while $\hat{\beta}_0 \approx -0.9411$. This means that the values are not exactly what were declared to be in the model, but they are close.
+
+\textbf{F.} Display the LS line on the scatter plot from D. Draw the population regression line on the plot in a different color. Use the legend() command to create the appropriate legend.
+```{r}
+plot(x,y)
+abline(mod2,col = 'red')
+abline(a = -1, b = 0.5, col = 'blue')
+
+legend(0, 0.5, legend=c("LS Line", "Pop. Regression Line"),
+       col=c("red", "blue"), lty = 1, cex=0.8)
+```
+

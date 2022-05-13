@@ -1,0 +1,187 @@
+---
+title: "S510 HW 4"
+author: "Erick Castillo"
+date: "11/22/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include = FALSE}
+library(faraway)
+library(ISLR)
+library(alr4)
+library(leaps)
+library(corrplot)
+```
+
+# Problem 1
+
+This problem uses the \textbf{divusa} data set. The divorce column will be used as a response variable, with the remaining columns as predictors. Find the "best" model with the following methods.
+
+\textbf{A.} Use stepwise regression with AIC.
+```{r}
+redu.mod <- lm(divorce~1, data = divusa)
+full.mod <- lm(divorce~., data = divusa)
+step(redu.mod, scope = list(lower = redu.mod, upper = full.mod))
+```
+
+\textbf{Answer:} From the above output, it is clear that the best model, with the smallest AIC, is the one with femlab, birth, marriage, year, and military as predictor variables.
+
+\textbf{B.} Use best subsets regression with $R^{2}_{adj}$.
+```{r}
+attach(divusa)
+r2.mod <- regsubsets(cbind(year, unemployed, femlab, marriage, birth, military), divorce)
+summary.mod <- summary(r2.mod)
+
+summary.mod$which
+summary.mod$rsq
+```
+
+\textbf{Answer: }The model with the best $R^2_{adj}$ is the one with all the predictors present in the model. That is, year, unemployed, femlab, marriage, birth, and military are all in.
+
+\textbf{C.} Use best subsets regression with adjusted Mallow's $C_p$.
+```{r}
+summary.mod$which
+summary.mod$cp
+
+detach(divusa)
+```
+
+\textbf{Answer: }We can conclude that the "best" model, when using Mallow`s $C_p$ is the one that has year, femlab, marriage, birth, and military as predictors in the model. Notice that for this model, $C_p \approx 5.84 < p =6$, meaning that this model has the least amount of bias.
+
+# Problem 2
+
+This problem uses the \textbf{Auto} data set.
+
+\textbf{A.} Produce a scatterplot matrix which includes all the variables in the data set.
+
+In this case, I will omit the name column. It has a total of 301 unique strings, meaning that these will eat up the degrees of freedom if they are included as categorical variables.
+```{r}
+Auto1 <- subset(Auto, select = -c(name))
+pairs(Auto1)
+```
+
+\textbf{B.} Compute and visualize the matrix of correlations between the above variables.
+```{r}
+corrplot(cor(Auto1), method = 'number')
+```
+
+\textbf{C.} Perform multiple linear regression with \textbf{mpg} as the response variable, with all other variables as predictors.
+```{r}
+mod1 <- lm(mpg~., data = Auto1)
+summary(mod1)
+```
+
+\textbf{i.} Is there a relationship between the predictors and the response?
+
+\textbf{Answer: }There appears to be a strong relationship between mpg and the predictors present in the model. Notice that $R^2_{adj}=0.8182$, which is high. There are a few predictors that do not appear to be significant given the presence of the other predictors. These include \textbf{cylinders, horsepower, and acceleration.}
+
+\textbf{ii.} Which predictors appear to have a statistically significant relationship with the response?
+
+\textbf{Answer: }It appears that \textbf{displacement, weight, year, and origin} all have a statistically significant relationship with mpg, given the presence of the other predictors in the model.
+
+\textbf{iii.} What does the coefficient for the \textbf{year} variable suggest?
+
+\textbf{Answer: } $\hat{\beta}_{year}\approx0.751$. This means that for every year that passes, we would expect the average mpg for cars to increase by 0.751, holding all the other variables in the model constant.
+
+
+\textbf{D.} Perform a residual analysis, are there any problems with this fit?
+```{r}
+plot(mod1$fitted.values, mod1$residuals)
+
+qqnorm(mod1$residuals)
+qqline(mod1$residual, col = 'red')
+shapiro.test(mod1$residuals)
+```
+
+\textbf{Answer: }The fit vs. residuals plot shows that there is a lack of linearity. There is also a fanning pattern with the residuals, meaning that there is non-constant variance. Finally, the Normal QQ-plot indicates that there is an issue with the normality of the residuals. This claim is further supported by the Shaprio-Wilk test output, which has a very small p-value. This means that there is very strong evidence to suggest that the residuals are not normally distributed.
+
+\textbf{E.} Are there any outliers? Are there any high-leverage points?
+```{r}
+# the following code identifies high leverage points.
+hv1 <- hatvalues(mod1)
+which(hv1 > 3*(mod1$rank/dim(Auto1)[1]))
+
+# the following code identifies outliers.
+rstan1 <- rstandard(mod1)
+which(rstan1 > 3 | rstan1 < -3)
+```
+
+\textbf{Answer: }From the above output, I can tell that there are 5 high-leverage points, including the 9th, 14th, 27th, 28th, and 29th obsevations in the Auto1 data set.
+
+There are also 4 outliers including the 243rd, 321st, 324th, and 325th entries in the Auto1 data set.
+
+\textbf{F.} Use the add1 function to find at least one significant interaction term. Update the model in part \textbf{C}.
+```{r}
+add1(mod1, ~.+displacement*horsepower+horsepower*weight+
+       weight*acceleration+acceleration*displacement+
+       horsepower*acceleration , data = Auto1, test ='F')
+
+mod2 <- update(mod1, .~.+displacement*horsepower)
+summary(mod2)
+```
+
+\textbf{Answer: } The significant interaction term that I added to my model was displacement*horsepower.
+
+# Problem 3
+This problem uses the \textbf{lathe1} data set.
+
+\textbf{A.} Starting with the second-order model specified in the problem, use the Box-Cox method to show that the response requires a logarithmic transformation.
+```{r}
+mod3 <- lm(Life~Speed+Feed+I(Speed^2)+I(Feed^2)+Speed*Feed, data = lathe1)
+
+mod.boxcox = boxCox(mod3, lambda = seq(-1, 1, length = 10))
+```
+
+\textbf{Answer: }Because $0 \in C.I$ in the above plot, we can conclude that a log() transformation of the response variable would be useful.
+
+\textbf{B.} State the null and alternative hypotheses for the global F-test for the model with log(Life). Perform the test and summarize the results.
+
+\textbf{Answer: }The null and alternative hypotheses are as follows:
+
+$H_0: \hat{\beta}_{Speed}=\hat{\beta}_{Feed}=\hat{\beta}_{Speed^2}=\hat{\beta}_{Feed^2}=\hat{\beta}_{Speed \times Feed}=0$
+
+$H_A:$ at least one $B_i \ne 0$, where $i \in \{$Speed, Feed, $Speed^2$, $Feed^2$, $Speed \times Feed \}$.
+
+The test is performed in the following chunk:
+```{r}
+logLife <- log(lathe1$Life)
+mod4.full <- lm(logLife~Speed+Feed+I(Speed^2)+I(Feed^2)+Speed*Feed, data = lathe1)
+mod4.redu <- lm(logLife~1, data = lathe1)
+anova(mod4.redu, mod4.full)
+```
+
+From the above output, we can see that the p-value is very close to 0. This implies that there is strong evidence to suggest that at least one of the $\hat{\beta}_i$'s $\ne 0$. We would reject $H_0$.
+
+\textbf{C.} Explain the practical meaning of the hypothesis $H_0: \beta_1=\beta_{11}=\beta_{12}=0$ in the context of the above model.
+
+\textbf{Answer: } This is a partial F-test that examines whether Speed, $Speed^2$, and $Speed \times Feed$ are significant in the model. 
+
+\textbf{D.} Perform the test in \textbf{C.} and summarize results.
+```{r}
+mod4.part <- lm(logLife~Feed+I(Feed^2), data = lathe1)
+anova(mod4.part, mod4.full)
+```
+
+\textbf{Answer: }Because the above output's p-value is so low, we would conclude that at least one of the tested predictors is useful in the model. We would reject $H_0$.
+
+\textbf{E.} Using Cook's distance, find the two most influential observations when using the fit of the quadratic mean function for log(Life). Explain why these observations are influential. Delete these points, and refit the model. Compare the fit with all the data.
+```{r}
+cooks.distance(mod4.full)
+```
+
+\textbf{Answer: }From the above output, we observe that the 9th and 10th observations are both greater than 0.5. This indicates these points may be influential. The following chunk of code drops these rows and refits the model:
+```{r}
+lathe2 <- lathe1[-c(9,10), ]
+logLife2 <- log(lathe2$Life)
+
+mod5 <- lm(logLife2~Speed+Feed+I(Speed^2)+I(Feed^2)+Speed*Feed, data = lathe2)
+
+summary(mod4.full) # original model
+summary(mod5) # model with two points dropped
+```
+
+\textbf{Answer: }Dropping the two most influential points slightly increased the $R^2_{adj}$ of the model from 0.9596 to 0.9658.

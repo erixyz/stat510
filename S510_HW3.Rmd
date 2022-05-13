@@ -1,0 +1,157 @@
+---
+title: "S530 HW 3"
+author: "Erick Castillo"
+date: "10/24/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include = FALSE}
+library(faraway)
+library(alr4)
+library(corrplot)
+```
+
+# Problem 1
+This problem uses the data set infmort. The specified model in this case log(mortality)$=\beta_{0}+\beta_1log(income)_{1i}+\beta_2(region)_{2i}+\epsilon_i$.
+
+\textbf{A.} State the null and alternative hypothesis for the global F-test for this model. Perform the test and summarize the results.
+
+The test uses the following hypothesis:
+$H_0:\beta_1=\beta_2=0$
+$H_A:\beta_i \ne 0$ for some $i \in \{1,2\}$
+
+The test is performed in the following chunk:
+```{r}
+log.mort <- log(infmort$mortality)
+full.mod1 <- lm(log.mort~log(income)+region, data = infmort)
+redu.mod1 <- lm(log.mort~1, data = infmort)
+
+anova(redu.mod1, full.mod1)
+```
+
+From the above ANOVA output, we can conclude that there is strong evidence to suggest that at least one of the slope parameters is significant in the model. This means that I would reject $H_0$.
+
+\textbf{B.} Explain the practical meaning of the hypothesis $H_0: \beta_2=0$ in the context of the above model.
+
+The null hypothesis $H_0: \beta_2=0$ poses the question of whether the slope of the region variable in the above model is significant. The alternative hypothesis would be $H_1:\beta_2 \ne 0$.
+
+\textbf{C.} Perform the test introduced in part B of this problem.
+
+The following chunk performs the test to see if the slope of the region variable is significant:
+```{r}
+redu.mod2 <- lm(log.mort~log(income), data = infmort)
+anova(redu.mod2, full.mod1)
+```
+
+From the above ANOVA output we can conclude that there is strong evidence to suggest that slope of the region variable is significant in the model. That is, I would reject $H_0:\beta_2=0$.
+
+# Problem 2
+This problem uses the sat data set.
+
+\textbf{A.} Using total as the response variable and expend and takers as response variables, test the hypothesis that $\beta_{expend}=\beta_{takers}=0$. Do any of the two predictors have an effect on total?
+
+The following chunk of code runs a Global F-Test on the two predictor variables above:
+```{r}
+full.mod2 <- lm(total~expend+takers, data = sat)
+redu.mod3 <- lm(total~1, data = sat)
+
+anova(redu.mod3, full.mod2)
+```
+
+The above ANOVA output indicates that there is strong evidence that at least one of slopes of the aforementioned predictors is not zero. In other words, I would reject $H_0:\beta_{expend}=\beta_{takers}=0$.
+
+To see if the predictors have an effect on total see the following output:
+```{r}
+summary(full.mod2)
+```
+
+Observing the p-values in the above model, it is clear that expend and takers are both useful predictors in the model.
+
+\textbf{B.} Now add ratio to the model. Test the hypothesis that $\beta_{ratio}=0$. Compare this model to the previous one using an F-test. Show that the F-test and t-test here are equivalent.
+
+The following chunk of code adds ratio to the model and tests the above hypothesis:
+```{r}
+fuller.mod <- update(full.mod2, .~. + ratio)
+anova(full.mod2, fuller.mod)
+```
+
+Notice that the above test indicates that the slope of the ratio variable appears to be insignificant, that is, we would fail to reject $H_0:\beta_{ratio}=0$. Notice that the p-value of the above output is 0.3629, this is the p-value for the F-test of the variable ratio.
+
+The following chunk of code is a summary of the model with ratio.
+```{r}
+summary(fuller.mod)
+```
+
+Now, looking at the p-value of the variable ratio, we can see that it is 0.3629. This is the p-value generated using a t-test. That is, the F-test and t-test p-values are equivelant, meaning that in both cases we would fail to reject $H_0:\beta_{ratio}=0$.
+
+# Problem 3
+This problem uses the BGSall data set in the alr4 package. We will be considering the regression of HT18 on HT9 and the grouping factor Sex.
+
+\textbf{A.} Draw the scatterplot of HT18 vs HT9, use different colors to indicate the different sexes in the dataset. Comment on an appropriate model for the data.
+```{r, fig.align='center',out.height="50%",out.width="50%"}
+BGSall$Sex <- factor(BGSall$Sex) # 0 is for males, 1 for females
+
+plot(BGSall$HT9, BGSall$HT18, col = c('blue','pink')[BGSall$Sex])
+```
+
+It is clear from the above plot that the observed males tend to be taller than the observed females. In this case, I would probably need to implement a dummy/indicator variable into the model to account for the difference in the heights.
+
+\textbf{B.} We fit the model, and test the significance of the indicator variable:
+```{r}
+mod1 <- lm(HT18~HT9+Sex, data = BGSall)
+summary(mod1)
+```
+
+We can see from the above output that the dummy variable is significant in the model, as the t-value's distance is very far from 0.
+
+\textbf{C.} Obtain a 95\% confidence interval for the difference between males and females.
+```{r}
+confint(mod1)
+```
+
+Recall that females are coded as 1 in this dataset. Using the above output, we can be 95\% confident that women in this dataset are between 10.53cm and 12.86cm shorter than men.
+
+\textbf{D.} Add the parallel regression line to the scatterplot generated in part A of this problem:
+```{r, fig.align='center',out.height="50%",out.width="50%"}
+plot(BGSall$HT9, BGSall$HT18, col = c('blue','pink')[BGSall$Sex])
+abline(a = 48.517, b = 0.96, col = 'blue') # regression line for males
+abline(a = 36.821, b = 0.96, col = 'pink') # regression line for females
+```
+
+# Problem 4
+This problem uses the water data set in alr4. Use BSAAM as the response and OPBPC, OPRC, and OPSLAKE as predictors.
+
+\textbf{A.} Examine the scatterplot matrix. Explain what the correlation matrix should look like, then compute the correlation matrix to verify.
+```{r}
+water1 <- water[, c('BSAAM','OPBPC','OPRC','OPSLAKE')]
+pairs(water1)
+```
+
+It appears that the correlation matrix should have high values for all the relationships that are present. That is, $r \ge 0.5$ for all entries. The following code should verify this:
+```{r, fig.align='center',out.height="50%",out.width="50%"}
+corrplot(cor(water1), method = 'number')
+```
+
+And it does.
+
+\textbf{B.} Get the regression summary of BSAAM on the three regressors with OPBPC, OPRC, and OPSLAKE included sequentially.
+```{r}
+mod2 <- lm(BSAAM~OPBPC+OPRC+OPSLAKE, data=water)
+summary(mod2)
+```
+
+The Pr$(>|t|)$ column is the p-value of the corresponding variable, while the other variables that are present in the model. For example, OPBPC would have a high p-value given OPRC and OPSLAKE are included in the model.
+
+\textbf{C.} Find SSR(OPSLAKE|OPRC, OPBPC) and SSE(OPBPC, OPRC) using anova().
+```{r}
+mod2.reduced <- lm(BSAAM~OPBPC+OPRC, data=water)
+anova(mod2.reduced, mod2)
+```
+
+Using the above output, we can find that SSE(OPBPC, OPRC)$=3,331,163,233$. 
+
+Notice that SSE(OPBPC, OPRC)$-$SSE(OPBPC, OPRC, OPSLAKE)$=$SSR(OPSLAKE|OPBPC, OPRC). We can then calculate that SSR(OPSLAKE|OPBPC, OPRC)$=641,654,048$
